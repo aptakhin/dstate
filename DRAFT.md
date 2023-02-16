@@ -9,7 +9,7 @@ class TaskStateMachine(StateMachine):
 
         states
 
-    @st.iniitial
+    @st.initial
     def handle(self, ):
 
         self.switch()
@@ -22,6 +22,7 @@ class TaskStateMachine(StateMachine):
     def post_state(self, )
         pass
 
+
 ```
 
 Middlewares for events: prestates, save
@@ -29,6 +30,39 @@ Middlewares for events: prestates, save
 state/
 inject/
 store/
+
+Smth Plugguable to other state machines.
+
+```python
+self.dstate =
+
+
+
+class DStateMachine
+
+
+def build_event_processing(self, event: Event, ):
+    processing = [
+        pre_commit
+        Process(),
+        post_commit,
+        Store(),
+    ]
+
+    return processing
+```
+
+
+```python
+
+
+```
+
+
+timer:
+
+
+
 
 Inspiration:
 - https://github.com/fgmacedo/python-statemachine
