@@ -1,88 +1,75 @@
-# from typing import Self
-from contextlib import contextmanager
-import typing
-from statemachine import State, StateMachine
+from transitions import Machine
+import random
 
 
-class TrafficLightMachine(StateMachine):
-    "A traffic light machine"
-    green = State("Green", initial=True)
-    yellow = State("Yellow")
-    red = State("Red")
+class NarcolepticSuperhero(object):
 
-    cycle = green.to(yellow) | yellow.to(red) | red.to(green)
+    # Define some states. Most of the time, narcoleptic superheroes are just like
+    # everyone else. Except for...
+    states = ['asleep', 'hanging out', 'hungry', 'sweaty', 'saving the world']
 
-    def on_cycle(self, event_data):
-        return f"Running {event_data.event} from {event_data.source.id} to {event_data.target.id}"
+    def __init__(self, name):
 
+        # No anonymous superheroes on my watch! Every narcoleptic superhero gets
+        # a name. Any name at all. SleepyMan. SlumberGirl. You get the idea.
+        self.name = name
 
-def dstate_new(cls, *args, **kwargs):
-    print('A', cls, args, kwargs)
-    x = object.__new__(cls)
-    return x
+        # What have we accomplished today?
+        self.kittens_rescued = 0
 
-def dstate_init(instance, *args, **kwargs):
-    print('B', type(instance), args, kwargs)
-    # x = object.__new__(cls)
-    dstate_reference = kwargs.pop('dstate_ref')
-    print('ZZ', type(instance), args, kwargs)
-    # cls.__init__(*args, **kwargs)
-    instance._dstate_ref = dstate_reference
+        # Initialize the state machine
+        self.machine = Machine(model=self, states=NarcolepticSuperhero.states, initial='asleep')
 
-    if hasattr(instance, '__getattr__'):
-        instance._dstate_old_getattr = instance.__getattr__
-        instance.__getattr__ = dstate_getattr
+        # Add some transitions. We could also define these using a static list of
+        # dictionaries, as we did with states above, and then pass the list to
+        # the Machine initializer as the transitions= argument.
 
-    if hasattr(instance, '__getattribute__'):
-        instance._dstate_old_getattribute = instance.__getattribute__
-        instance.__getattribute__ = dstate_getattribute
+        # At some point, every superhero must rise and shine.
+        self.machine.add_transition(trigger='wake_up', source='asleep', dest='hanging out')
 
+        # Superheroes need to keep in shape.
+        self.machine.add_transition('work_out', 'hanging out', 'hungry')
 
-    # instance.
+        # Those calories won't replenish themselves!
+        self.machine.add_transition('eat', 'hungry', 'hanging out')
 
-    # return x
+        # Superheroes are always on call. ALWAYS. But they're not always
+        # dressed in work-appropriate clothing.
+        self.machine.add_transition('distress_call', '*', 'saving the world',
+                         before='change_into_super_secret_costume')
 
+        # When they get off work, they're all sweaty and disgusting. But before
+        # they do anything else, they have to meticulously log their latest
+        # escapades. Because the legal department says so.
+        self.machine.add_transition('complete_mission', 'saving the world', 'sweaty',
+                         after='update_journal')
 
-def dstate_getattr(instance, *args, **kwargs):
-    print('C', type(instance), instance.__getattr__, instance._dstate_old_getattr, args, kwargs)
-    return instance._dstate_old_getattr(*args, **kwargs)
+        # Sweat is a disorder that can be remedied with water.
+        # Unless you've had a particularly long day, in which case... bed time!
+        self.machine.add_transition('clean_up', 'sweaty', 'asleep', conditions=['is_exhausted'])
+        self.machine.add_transition('clean_up', 'sweaty', 'hanging out')
 
-def dstate_getattribute(instance, *args, **kwargs):
-    print('D', type(instance), instance.__getattr__, instance._dstate_old_getattr, args, kwargs)
-    return instance._dstate_old_getattribute(*args, **kwargs)
+        # Our NarcolepticSuperhero can fall asleep at pretty much any time.
+        self.machine.add_transition('nap', '*', 'asleep')
 
-class DSyncLock(object):
-    def __init__(self, dreference: 'DReference', impl) -> None:
-        self.reference = dreference
-        self._impl = impl
+    def update_journal(self):
+        """ Dear Diary, today I saved Mr. Whiskers. Again. """
+        self.kittens_rescued += 1
 
-    def enter(self):
-        pass
+    @property
+    def is_exhausted(self):
+        """ Basically a coin toss. """
+        return random.random() < 0.5
 
-    def release(self):
-        pass
-
-
-@contextmanager
-def lock(self) ->  typing.ContextManager[DSyncLock]:
-    lock = DSyncLock(self.reference, lock_impl)
-    try:
-        yield lock
-    finally:
-        lock.release()
+    def change_into_super_secret_costume(self):
+        print("Beauty, eh?")
 
 
-TrafficLightMachine.__new__ = dstate_new
-TrafficLightMachine.__init__ = dstate_init
-# TrafficLightMachine.__getattr__ = dstate_getattr
+def test_prop():
+    print(1)
+    batman = NarcolepticSuperhero("Batman")
+    print(batman.state)
 
-x = TrafficLightMachine(dstate_ref={'c': 3})
-
-x.cycle()
-
-with lock(x):
-    pass
-
-# with dsm(TrafficLightMachine):
-#     reference = {'light_id': 3434}
-#     with TrafficLightMachine(reference=reference) as lm:
+    batman.wake_up()
+    print(batman.state)
+    assert False
