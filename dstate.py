@@ -41,10 +41,10 @@ class DataContainer(object):
     def __init__(self) -> None:
         pass
 
-    def encode():
+    def encode(self):
         pass
 
-    def decode():
+    def decode(self):
         pass
 
 
@@ -83,8 +83,8 @@ class InMemoryPersisterCreators(PersisterCreator):
     def __init__(self) -> None:
         self._obj: dict[str, Any] = {}
 
-    def get_or_create(self, machine_cls, ref) -> InMemoryPersister:
-        return InMemoryPersister(self._obj, key=ref['id'])
+    def get_or_create(self, ref: DReference) -> InMemoryPersister:
+        return InMemoryPersister(self._obj, key=ref.ref['id'])
 
 
 class WorldPersisterCreators(object):
@@ -97,9 +97,9 @@ class WorldPersisterCreators(object):
     def get_creator(self, name: str) -> PersisterCreator:
         return self._creators[name]
 
-    def get_or_create_persister(self, name, machine_cls, ref) -> StatePersister:
+    def get_or_create_persister(self, name, ref: DReference) -> StatePersister:
         creator = self.get_creator(name)
-        return creator.get_or_create(machine_cls, ref)
+        return creator.get_or_create(ref)
 
 
 class Lock(ABC):
@@ -153,8 +153,8 @@ class InMemoryLockCreator(LockCreator):
     def __init__(self):
         self._locks: dict[int, InMemoryLock] = {}
 
-    def get_or_create(self, machine_cls, ref) -> Lock:
-        store_id = ref['id']
+    def get_or_create(self, ref: DReference) -> Lock:
+        store_id = ref.ref['id']
         self._locks.setdefault(store_id, InMemoryLock())
         return self._locks[store_id]
 
@@ -163,7 +163,7 @@ class NoLockCreator(LockCreator):
     def __init__(self):
         self._no_lock = NoLock()
 
-    def get_or_create(self, machine_cls, ref) -> Lock:
+    def get_or_create(self, ref: DReference) -> Lock:
         return self._no_lock
 
 
@@ -177,9 +177,9 @@ class WorldLockCreators(object):
     def get_creator(self, name: str) -> LockCreator:
         return self._creators[name]
 
-    def get_or_create_lock(self, lock_name, machine_cls, ref) -> Lock:
+    def get_or_create_lock(self, lock_name, ref: DReference) -> Lock:
         creator = self.get_creator(lock_name)
-        return creator.get_or_create(machine_cls, ref)
+        return creator.get_or_create(ref)
 
 
 class World(object):
@@ -205,20 +205,28 @@ class World(object):
     def lock_and_write_machine(
         self,
         machine_cls: MType,
-        ref: dict[str, Any],
+        referancable: dict[str, Any],
+        *,
         initial: Optional[str] = None,
         lock_name: str = 'lock',
         lock_creators: Optional[WorldLockCreators] = None,
         persister_name: str = 'default',
         persister_creators: Optional[WorldPersisterCreators] = None,
     ) -> ContextManager[MType]:
-        lock_creators = lock_creators or self._lock_creators
-        lock = lock_creators.get_or_create_lock(lock_name, machine_cls, ref)
+        ref = DReference(cls=machine_cls, ref=referancable)
+
+        lock = self._get_lock(
+            ref=ref,
+            lock_name=lock_name,
+            lock_creators=lock_creators or self._lock_creators,
+        )
         lock.lock(timeout=timedelta(seconds=3), lock_time=timedelta(seconds=3))
 
-        persister_creators = persister_creators or self._persister_creators
-        persister_creator = persister_creators.get_creator(persister_name)
-        persister = persister_creator.get_or_create(machine_cls, ref)
+        persister = self._get_persister(
+            ref=ref,
+            persister_name=persister_name,
+            persister_creators=persister_creators or self._persister_creators,
+        )
         state_data = persister.load(initial)
 
         def notify(dstate, persister):
@@ -239,7 +247,21 @@ class World(object):
 
     def _get_persister(
         self,
-        machine_cls: MType,
-        ref: dict[str, Any],
+        *,
+        ref: DReference,
+        persister_name: str,
+        persister_creators: WorldPersisterCreators,
     ) -> StatePersister:
-        return InMemoryPersister(self._in_memory_obj)
+        persister_creators = persister_creators
+        persister_creator = persister_creators.get_creator(persister_name)
+        return persister_creator.get_or_create(ref)
+
+    def _get_lock(
+        self,
+        *,
+        ref: DReference,
+        lock_name: str,
+        lock_creators: WorldLockCreators,
+    ) -> StatePersister:
+        lock_creators = lock_creators or self._lock_creators
+        return lock_creators.get_or_create_lock(lock_name, ref)
