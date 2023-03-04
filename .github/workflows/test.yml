@@ -1,0 +1,40 @@
+name: Test dstate
+
+on: [push]
+
+env:
+  mongodb_dsn: mongodb://admin:admin@localhost:27017
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry==1.4
+          ./shell/install-local.sh
+      - name: pytest
+        run: |
+          ./shell/pytest-smoke.sh
+      - name: Lint with flake8
+        run: |
+          ./shell/flake8.sh
+
+      - name: Start mongo
+        continue-on-error: true
+        run: |
+          ./full_tests/shell/beg-mongo.sh
+      - name: pytest full driver set
+        continue-on-error: true
+        run: |
+          ./shell/pytest-full.sh

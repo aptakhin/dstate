@@ -1,0 +1,118 @@
+[tool.poetry]
+name = "dstate"
+version = "0.1.0"
+description = ""
+authors = ["Alex Ptakhin <me@aptakhin.name>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.1"
+black = "^23.1.0"
+pre-commit = "^3.1.1"
+pytest-watcher = "^0.2.6"
+ruff = "^0.0.254"
+pydantic = {extras = ["dotenv"], version = "^1.10.5"}
+mypy = "^1.0.1"
+
+flake8-commas = "^2.0"
+flake8-quotes = "^3.0"
+flake8-comprehensions = "^3.1"
+flake8-docstrings = "^1.3"
+flake8-string-format = "^0.3"
+flake8-bugbear = "^22.9"
+flake8-debugger = "^4.0"
+flake8-isort = ">=4,<6"
+flake8-eradicate = "^1.0"
+flake8-bandit = "^4.1"
+flake8-broken-line = "^0.6"
+flake8-rst-docstrings = ">=0.2,<0.4"
+pep8-naming = "^0.13"
+darglint = "^1.2"
+flake8-pyproject = "^1.2.2"
+
+[tool.poetry.group.python-statemachine.dependencies]
+python-statemachine = "^1.0.3"
+
+
+[tool.poetry.group.driver.dependencies]
+pymongo = "^4.3.3"
+
+[tool.flake8]
+ignore = ['E231', 'E241']
+per-file-ignores = [
+    # Temporary disable docs
+
+    # D100 Missing docstring in public module
+    # D101 Missing docstring in public class
+    # D102 Missing docstring in public method
+    # D103 Missing docstring in public function
+    # D104 Missing docstring in public package
+    # D105 Missing docstring in magic method
+    # D106 Missing docstring in public nested class
+    # D107 Missing docstring in __init__
+    # I001 isort found an import in the wrong position
+    # I003 isort expected 1 blank line in imports, found 0
+    # I004 isort found an unexpected blank line in imports
+    # I005 isort found an unexpected missing import
+
+    # Permanent choice
+    # W503 line break before binary operator
+    '*.py:D100,D101,D102,D103,D104,D105,D106,D107,I001,I003,I004,I005,W503',
+
+    # Tests group
+
+    # D100 Missing docstring in public module
+    # D101 Missing docstring in public class
+    # D102 Missing docstring in public method
+    # D103 Missing docstring in public function
+    # D104 Missing docstring in public package
+    # D105 Missing docstring in magic method
+    # D106 Missing docstring in public nested class
+    # D107 Missing docstring in __init__
+    # S101 Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    # B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
+    # I001 isort found an import in the wrong position
+    # I003 isort expected 1 blank line in imports, found 0
+    # I004 isort found an unexpected blank line in imports
+    # I005 isort found an unexpected missing import
+    'smoke_tests/*:D100,D101,D102,D103,D104,D105,D106,D107,S101,B011,I001,I003,I004,I005',
+    'full_tests/*:D100,D101,D102,D103,D104,D105,D106,D107,S101,B011,I001,I003,I004,I005',
+]
+exclude = [
+    'dev-playground/*',
+]
+max-line-length = 79
+count = true
+
+[tool.black]
+line-length = 79
+target-version = ['py39']
+
+[tool.ruff]
+select = ["E", "F"]
+ignore = []
+
+exclude = [
+    "dev-playground",
+
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+]
+
+line-length = 79
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+target-version = "py39"
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
