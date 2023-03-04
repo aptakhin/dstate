@@ -62,7 +62,7 @@ class DStateMachine(object):
         # self.
 
     @contextmanager
-    def sync_lock(self) ->  typing.ContextManager[DSyncLock]:
+    def sync_lock(self) -> typing.ContextManager[DSyncLock]:
         lock_impl = self._get_lock_impl()
         lock = DSyncLock(self.reference, lock_impl)
         try:
