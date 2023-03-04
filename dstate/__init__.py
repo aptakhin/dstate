@@ -71,17 +71,6 @@ class State(object):
         logger.debug('State machine made change %s %s', name, value)
 
 
-class DataContainer(object):
-    def __init__(self) -> None:
-        pass
-
-    def encode(self):
-        pass
-
-    def decode(self):
-        pass
-
-
 class StatePersister(ABC):
     @abstractmethod
     def load(self, default_state: str) -> StateMachineData:
@@ -159,8 +148,6 @@ class WorldLockCreators(object):
 
 
 class World(object):
-    # events, timers
-
     def __init__(
         self,
         persister_creators: Optional[WorldPersisterCreators] = None,
