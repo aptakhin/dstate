@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import partial
 import logging
 import threading
@@ -69,7 +69,7 @@ class InMemoryPersister(StatePersister):
 
     def load(self, default_state: str) -> StateMachineData:
         return StateMachineData(
-            state=self._obj.get(self.key, {}).get('state', default_state)
+            state=self._obj.get(self.key, {}).get('state', default_state),
         )
 
     def save(self, state: StateMachineData) -> None:
@@ -198,7 +198,8 @@ class World(object):
             persister_creators or WorldPersisterCreators()
         )
         self._persister_creators.register(
-            'default', InMemoryPersisterCreators()
+            'default',
+            InMemoryPersisterCreators(),
         )
 
         self._lock_creators: WorldLockCreators = (

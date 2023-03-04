@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-mypy . --exclude dev-playground
+poetry run mypy . --exclude dev-playground

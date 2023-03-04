@@ -6,6 +6,11 @@ repos:
   - id: trailing-whitespace
 - repo: local
   hooks:
+  - id: ruff
+    name: ruff
+    entry: ./shell/ruff.sh
+    types: [python]
+    language: system
   - id: black
     name: black
     entry: ./shell/black.sh
@@ -16,9 +21,17 @@ repos:
     entry: ./shell/pytest.sh
     types: [python]
     language: system
-  # - id: flake8
-  #   name: flake8
-  #   entry: ./shell/flake8.sh
+  - id: flake8
+    name: flake8
+    entry: ./shell/flake8.sh
+    types: [python]
+    language: system
+    pass_filenames: false
+  # - id: mypy
+  #   name: mypy
+  #   entry: ./shell/mypy.sh
   #   types: [python]
   #   language: system
   #   pass_filenames: false
+default_language_version:
+  python: python3.9

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-black -S "$@"
+poetry run black -S "$@"

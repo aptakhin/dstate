@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-ptw --now .
+poetry run ptw --now .

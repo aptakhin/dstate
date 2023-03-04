@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-flake8
+poetry run flake8

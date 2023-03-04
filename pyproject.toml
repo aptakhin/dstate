@@ -33,16 +33,36 @@ darglint = "^1.2"
 flake8-pyproject = "^1.2.2"
 mypy = "^1.0.1"
 pytest-watcher = "^0.2.6"
+ruff = "^0.0.254"
 
 [tool.flake8]
 ignore = ['E231', 'E241']
 per-file-ignores = [
+    # Temporary disable docs
+
+    # D100 Missing docstring in public module
+    # D101 Missing docstring in public class
+    # D102 Missing docstring in public method
+    # D103 Missing docstring in public function
+    # D104 Missing docstring in public package
+    # D105 Missing docstring in magic method
+    # D107 Missing docstring in __init__
+    # I001 isort found an import in the wrong position
+    # I003 isort expected 1 blank line in imports, found 0
+    # I004 isort found an unexpected blank line in imports
+    '*.py:D100,D101,D102,D103,D104,D105,D107,I001,I003,I004',
+
+    # Tests group
+
     # D100 Missing docstring in public module
     # D102 Missing docstring in public method
     # D103 Missing docstring in public function
     # S101 Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
     # B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
-    'test_*.py:D100,D102,D103,S101,B011',
+    # I001 isort found an import in the wrong position
+    # I003 isort expected 1 blank line in imports, found 0
+    # I004 isort found an unexpected blank line in imports
+    'tests/*:D100,D102,D103,S101,B011,I001,I003,I004',
 ]
 exclude = [
     'dev-playground/*',
@@ -52,7 +72,28 @@ count = true
 
 [tool.black]
 line-length = 79
-target-version = ['py37']
+target-version = ['py39']
+
+[tool.ruff]
+select = ["E", "F"]
+ignore = []
+
+exclude = [
+    "dev-playground",
+
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+]
+
+line-length = 79
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+target-version = "py39"
+
+[tool.ruff.mccabe]
+max-complexity = 10
 
 [build-system]
 requires = ["poetry-core"]
