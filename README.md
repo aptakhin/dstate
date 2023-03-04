@@ -1,5 +1,7 @@
 # dstate - distributed state machines
 
+[![Test dstate](https://github.com/aptakhin/dstate/actions/workflows/test.yml/badge.svg)](https://github.com/aptakhin/dstate/actions/workflows/test.yml)
+
 ## Install
 
 ```bash
