@@ -167,7 +167,7 @@ class DState(object):
         print('Ch2', name, value)
         object.__setattr__(self, name, value)
 
-        if hasattr(self, 'save_here'):
+        if hasattr(self, 'save_here') and self.save_here is not None:
             self.save_here(self)
         # if name == 'state':
         #     setattr(self, 'state', value)
@@ -176,9 +176,9 @@ class DState(object):
 
 
 
-T = TypeVar('T')
-def make(machine_cls: T, ref: dict[str, Any], initial: Optional[str] = None) -> T:
-    zs = DState(state=initial)
+MType = TypeVar('MType')
+# def make(machine_cls: MType, ref: dict[str, Any], initial: Optional[str] = None) -> MType:
+#     zs = DState(state=initial)
 
 class DataContainer(object):
     def __init__(self) -> None:
@@ -233,34 +233,68 @@ class InMemoryLock(object):
         self._lock.release()
 
 
-class InMemoryLockPool(object):
-    def __init__(self):
-        self._locks: dict[int, InMemoryLock] = {}
-
+class Lock(ABC):
+    @abstractmethod
     def lock(
         self,
         id_: int,
         lock_time: timedelta,
         timeout: timedelta,
-    ):
-        self._locks.setdefault(id_, InMemoryLock())
-        self._locks[id_].lock(lock_time, timeout)
+    ) -> None:
+        pass
 
-    def unlock(self, id_: int):
-        self._locks[id_].unlock()
+    @abstractmethod
+    def unlock(self, id_: int) -> None:
+        pass
+
+
+class LockCreator(object):
+    def create(self, machine_cls, ref) -> Lock:
+        pass
+
+
+class InMemoryLockCreator(LockCreator):
+    def __init__(self):
+        self._locks: dict[int, InMemoryLock] = {}
+
+    def get_or_create(self, machine_cls, ref) -> Lock:
+        store_id = ref['id']
+        self._locks.setdefault(store_id, InMemoryLock())
+        return self._locks[store_id]
+
+
+class WorldLockCreators(object):
+    def __init__(self) -> None:
+        self._creators: dict[str, LockCreator] = {}
+
+    def register(self, name: str, lock_creator: LockCreator) -> None:
+        self._creators[name] = lock_creator
+
+    # def create(self, name: str) -> LockCreator:
+    #     return self._creators[name]
+
+    def get_or_create_lock(self, lock_name, machine_cls, ref) -> Lock:
+        creator = self._creators[lock_name]
+        return creator.get_or_create(machine_cls, ref)
+
 
 
 class World(object):
     # events, timers
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lock_creator: Optional[WorldLockCreators]=None,
+    ) -> None:
         self._state_machine_persisters = {}
 
         self._in_memory_obj = {}
 
-        self._lock_pool = InMemoryLockPool()
+        self._lock_creators: WorldLockCreators = lock_creator or WorldLockCreators()
+        self._lock_creators.register('lock', InMemoryLockCreator())
 
         # self._contexts = {}
+        # different locks support pg for row, or redis for row.
 
     def register_state_machine_persister(self, cls: Any, persister):
         pass
@@ -271,17 +305,24 @@ class World(object):
     @contextmanager
     def lock_and_write_machine(
         self,
-        machine_cls: T,
+        machine_cls: MType,
         ref: dict[str, Any],
         initial: Optional[str] = None,
-    ) -> ContextManager[T]:
-        self._lock_pool.lock(ref['id'], timeout=timedelta(seconds=3), lock_time=timedelta(seconds=3))
+        lock_name: str = 'lock',
+        lock_creator: Optional[WorldLockCreators] = None,
+    ) -> ContextManager[MType]:
+        # lock_creator_name = 'inmemory'
+        lock_creators = lock_creator or self._lock_creators
+        lock = lock_creators.get_or_create_lock(lock_name, machine_cls, ref)
+        # self._lock_pool.lock(ref['id'], timeout=timedelta(seconds=3), lock_time=timedelta(seconds=3))
+        lock.lock(timeout=timedelta(seconds=3), lock_time=timedelta(seconds=3))
 
         persister = self._get_persister(machine_cls, ref)
         state_data = persister.load(ref, initial)
 
         def notify(dstate, ref, persister):
             state_data = dstate.make_state_data()
+            print('Want save', ref, state_data.__dict__)
             persister.save(ref, state_data)
 
         state = DState(state=state_data.state, save_here=partial(notify, ref=ref, persister=persister))
@@ -291,32 +332,30 @@ class World(object):
             yield machine
         finally:
             # del self._contexts[id(state)]
-            self._lock_pool.unlock(ref['id'])
+            print('MF', self._in_memory_obj)
+            lock.unlock()
 
     @contextmanager
-    def read_machine(machine_cls: T, ref: dict[str, Any], initial: Optional[str] = None) -> ContextManager[T]:
-        state = DState(state=initial)
+    def read_machine(self, machine_cls: MType, ref: dict[str, Any], initial: Optional[str] = None) -> ContextManager[MType]:
+        persister = self._get_persister(machine_cls, ref)
+        state_data = persister.load(ref, initial)
+
+        state = DState(state=state_data.state, save_here=None)
+        # self._contexts[id(state)] = persister
         machine = machine_cls(state)
         yield machine
 
     def _get_persister(
         self,
-        machine_cls: T,
+        machine_cls: MType,
         ref: dict[str, Any],
     ) -> StatePersister:
         return InMemoryPersister(self._in_memory_obj)
 
 
-class StatePersister(object):
-    pass
-
-
-class ObjectLock(object):
-    pass
-
 
 # @contextmanager
-# def lock_and_write_machine(machine_cls: T, ref: dict[str, Any], initial: Optional[str] = None, world: WorldState) -> ContextManager[T]:
+# def lock_and_write_machine(machine_cls: MType, ref: dict[str, Any], initial: Optional[str] = None, world: WorldState) -> ContextManager[MType]:
 #     # lock()
 #     StatePersistance(cls, ref)
 #     state = DState(state=initial)
@@ -327,7 +366,7 @@ class ObjectLock(object):
 #         state.dispose()
 
 # @contextmanager
-# def read_machine(machine_cls: T, ref: dict[str, Any], initial: Optional[str] = None) -> ContextManager[T]:
+# def read_machine(machine_cls: MType, ref: dict[str, Any], initial: Optional[str] = None) -> ContextManager[MType]:
 #     state = DState(state=initial)
 #     machine = machine_cls(state)
 #     yield machine
@@ -357,10 +396,19 @@ def test_xxx():
     with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
         light_machine.cycle()
         print(light_machine, light_machine.model)
+        light_machine.cycle()
+        print(light_machine, light_machine.model)
+        light_machine.cycle()
+        print(light_machine, light_machine.model)
 
-    # with world.read_machine(TrafficLightMachine, {'id': 1}) as light_machine:
-    #     light_machine.cycle()
-    #     print(light_machine, light_machine.model)
+    with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+        print(light_machine, light_machine.model)
+        light_machine.cycle()
+        print(light_machine, light_machine.model)
+
+    with world.read_machine(TrafficLightMachine, {'id': 2}) as light_machine:
+        light_machine.cycle()
+        print(light_machine, light_machine.model)
 
     assert False
 
