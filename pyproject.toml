@@ -8,8 +8,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-python-statemachine = "^1.0.3"
-transitions = "^0.9.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"
@@ -34,6 +32,9 @@ flake8-pyproject = "^1.2.2"
 mypy = "^1.0.1"
 pytest-watcher = "^0.2.6"
 ruff = "^0.0.254"
+
+[tool.poetry.group.python-statemachine.dependencies]
+python-statemachine = "^1.0.3"
 
 [tool.flake8]
 ignore = ['E231', 'E241']
