@@ -22,7 +22,16 @@ jobs:
           ./shell/install-local.sh
       - name: pytest
         run: |
-          ./shell/pytest.sh
+          ./shell/pytest-smoke.sh
       - name: Lint with flake8
         run: |
           ./shell/flake8.sh
+
+      - name: Start mongo
+        continue-on-error: true
+        run: |
+          ./full_tests/shell/beg-mongo.sh
+      - name: pytest full driver set
+        continue-on-error: true
+        run: |
+          poetry run pytest full_tests/ -v
