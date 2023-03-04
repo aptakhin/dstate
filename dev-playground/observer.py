@@ -21,14 +21,14 @@ class DStore(object):
     pass
 
 
-class DReference(object):
+class Reference(object):
     def __init__(self, state_machine_cls, key: dict[str, Any]):
         self.state_machine_cls = state_machine_cls
         self.key = key
 
 
 class DLock(object):
-    def __init__(self, dreference: DReference) -> None:
+    def __init__(self, dreference: Reference) -> None:
         self.reference = dreference
 
     async def enter(self):
@@ -39,7 +39,7 @@ class DLock(object):
 
 
 class DSyncLock(object):
-    def __init__(self, dreference: DReference, impl) -> None:
+    def __init__(self, dreference: Reference, impl) -> None:
         self.reference = dreference
         self._impl = impl
 
@@ -56,8 +56,8 @@ class DStateObserver(object):
 
 
 class DStateMachine(object):
-    def __init__(self, reference: DReference) -> None:
-        self.reference: DReference = reference
+    def __init__(self, reference: Reference) -> None:
+        self.reference: Reference = reference
         self.state_machine_adapter: Any = None
         # self.
 

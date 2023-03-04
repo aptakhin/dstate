@@ -33,5 +33,3 @@ repos:
   #   types: [python]
   #   language: system
   #   pass_filenames: false
-default_language_version:
-  python: python3.9
