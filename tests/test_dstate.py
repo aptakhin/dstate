@@ -1,5 +1,9 @@
-from dstate import World
+import pytest
+
+import dstate
 from statemachine import State, StateMachine
+
+from tests.conftest import LockType
 
 
 class TrafficLightMachine(StateMachine):
@@ -19,10 +23,8 @@ class TrafficLightMachine(StateMachine):
         )
 
 
-def test_persistance__base():
-    world = World()
-
-    with world.lock_and_write_machine(
+def test_persistance__base(my_world: dstate.World):
+    with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
     ) as light_machine:
@@ -30,10 +32,8 @@ def test_persistance__base():
         light_machine.cycle()
 
 
-def test_persistance__two_writes():
-    world = World()
-
-    with world.lock_and_write_machine(
+def test_persistance__two_writes(my_world: dstate.World):
+    with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
     ) as light_machine:
@@ -41,10 +41,21 @@ def test_persistance__two_writes():
         light_machine.cycle()
         assert light_machine.current_state.id == 'yellow'
 
-    with world.lock_and_write_machine(
+    with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
     ) as light_machine:
         assert light_machine.current_state.id == 'yellow'
         light_machine.cycle()
         assert light_machine.current_state.id == 'red'
+
+
+def test_persistance__read_exception_on_write(my_world: dstate.World):
+    with my_world.lock_and_write_machine(
+        TrafficLightMachine,
+        {'id': 1},
+        lock_name=LockType.none,
+    ) as light_machine:
+        assert light_machine.current_state.id == 'green'
+        with pytest.raises(dstate.NotAllowedStateMachineChange):
+            light_machine.cycle()

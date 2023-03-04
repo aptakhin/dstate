@@ -50,11 +50,15 @@ per-file-ignores = [
     # I001 isort found an import in the wrong position
     # I003 isort expected 1 blank line in imports, found 0
     # I004 isort found an unexpected blank line in imports
-    '*.py:D100,D101,D102,D103,D104,D105,D107,I001,I003,I004',
+
+    # Permanent choice
+    # W503 line break before binary operator
+    '*.py:D100,D101,D102,D103,D104,D105,D107,I001,I003,I004,W503',
 
     # Tests group
 
     # D100 Missing docstring in public module
+    # D101 Missing docstring in public class
     # D102 Missing docstring in public method
     # D103 Missing docstring in public function
     # S101 Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
@@ -62,7 +66,7 @@ per-file-ignores = [
     # I001 isort found an import in the wrong position
     # I003 isort expected 1 blank line in imports, found 0
     # I004 isort found an unexpected blank line in imports
-    'tests/*:D100,D102,D103,S101,B011,I001,I003,I004',
+    'tests/*:D100,D101,D102,D103,S101,B011,I001,I003,I004',
 ]
 exclude = [
     'dev-playground/*',

@@ -11,27 +11,6 @@ from typing import Any, ContextManager, Optional, TypeVar
 logger = logging.getLogger(__name__)
 
 
-class StateMachineData(object):
-    def __init__(self, state: str) -> None:
-        self.state = state
-
-
-class DState(object):
-    def __init__(self, state, save_here):
-        self.state = state
-        self.save_here = save_here
-
-    def make_state_data(self) -> StateMachineData:
-        return StateMachineData(state=self.state)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        logger.debug('State machine change %s %s', name, value)
-        object.__setattr__(self, name, value)
-
-        if hasattr(self, 'save_here') and self.save_here is not None:
-            self.save_here(self)
-
-
 MType = TypeVar('MType')
 
 
@@ -39,6 +18,58 @@ MType = TypeVar('MType')
 class Reference:
     cls: MType
     ref: dict[str, Any]
+
+
+class CannotUpdateStateMachineChange(RuntimeError):
+    def __init__(
+        self,
+        patch: dict[str, Any],
+        ref: Reference,
+        *args: object,
+    ) -> None:
+        self.patch = patch
+        self.ref = ref
+        super().__init__(*args)
+
+
+class StateMachineLockExpired(CannotUpdateStateMachineChange):
+    pass
+
+
+class NotAllowedStateMachineChange(CannotUpdateStateMachineChange):
+    pass
+
+
+class StateMachineData(object):
+    def __init__(self, state: str) -> None:
+        self.state = state
+
+
+class State(object):
+    def __init__(self, state, change_applier):
+        self.state = state
+        self.change_applier = change_applier
+        self._state_machine_inited = False
+
+    def make_state_data(self) -> StateMachineData:
+        return StateMachineData(state=self.state)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if (
+            not hasattr(self, '_state_machine_inited')
+            or not self._state_machine_inited
+        ):
+            object.__setattr__(self, name, value)
+            return
+
+        logger.debug('State machine want change %s %s', name, value)
+
+        if self.change_applier is not None:
+            self.change_applier({name: value})
+
+        object.__setattr__(self, name, value)
+
+        logger.debug('State machine made change %s %s', name, value)
 
 
 class DataContainer(object):
@@ -72,9 +103,9 @@ class InMemoryPersister(StatePersister):
             state=self._obj.get(self.key, {}).get('state', default_state),
         )
 
-    def save(self, state: StateMachineData) -> None:
+    def save(self, patch: dict[str, Any]) -> None:
         self._obj.setdefault(self.key, {})
-        self._obj[self.key]['state'] = state.state
+        self._obj[self.key].update(patch)
 
 
 class PersisterCreator(object):
@@ -119,6 +150,10 @@ class Lock(ABC):
     def unlock(self) -> None:
         pass
 
+    @abstractmethod
+    def allow_change(self, patch: dict[str, Any]) -> bool:
+        pass
+
 
 class NoLock(Lock):
     def lock(
@@ -130,6 +165,9 @@ class NoLock(Lock):
 
     def unlock(self) -> None:
         pass
+
+    def allow_change(self, _: dict[str, Any]) -> bool:
+        return False
 
 
 class InMemoryLock(Lock):
@@ -145,6 +183,9 @@ class InMemoryLock(Lock):
 
     def unlock(self):
         self._lock.release()
+
+    def allow_change(self, _: dict[str, Any]) -> bool:
+        return True
 
 
 class LockCreator(object):
@@ -197,16 +238,17 @@ class World(object):
         self._persister_creators: WorldPersisterCreators = (
             persister_creators or WorldPersisterCreators()
         )
-        self._persister_creators.register(
-            'default',
-            InMemoryPersisterCreators(),
-        )
-
         self._lock_creators: WorldLockCreators = (
             lock_creators or WorldLockCreators()
         )
-        self._lock_creators.register('lock', InMemoryLockCreator())
-        self._lock_creators.register('none', NoLockCreator())
+
+    @property
+    def persister_creators(self) -> WorldPersisterCreators:
+        return self._persister_creators
+
+    @property
+    def lock_creators(self) -> WorldLockCreators:
+        return self._lock_creators
 
     @contextmanager
     def lock_and_write_machine(
@@ -236,16 +278,13 @@ class World(object):
         )
         state_data = persister.load(initial)
 
-        def notify(dstate, persister):
-            state_data = dstate.make_state_data()
-            logger.debug('Want save %s', repr(state_data.__dict__))
-            persister.save(state_data)
-
-        state = DState(
-            state=state_data.state,
-            save_here=partial(notify, persister=persister),
+        machine = self._create_machine(
+            state_data=state_data,
+            ref=ref,
+            lock=lock,
+            persister=persister,
         )
-        machine = machine_cls(state)
+
         try:
             yield machine
         finally:
@@ -272,6 +311,35 @@ class World(object):
         lock_creators = lock_creators or self._lock_creators
         return lock_creators.get_or_create_lock(lock_name, ref)
 
+    def _create_machine(
+        self,
+        *,
+        state_data: StateMachineData,
+        ref: Reference,
+        lock: Lock,
+        persister: StatePersister,
+    ) -> MType:
+        def change_applier(
+            patch: dict[str, Any],
+            ref: Reference,
+            lock: Lock,
+            persister: StatePersister,
+        ):
+            if not lock.allow_change(patch):
+                raise NotAllowedStateMachineChange(patch, ref)
 
-class ImmutableStateMachine(RuntimeError):
-    pass
+            persister.save(patch)
+
+        state = State(
+            state=state_data.state,
+            change_applier=partial(
+                change_applier,
+                ref=ref,
+                lock=lock,
+                persister=persister,
+            ),
+        )
+
+        state_machine = ref.cls(state)
+        state._state_machine_inited = True
+        return state_machine
