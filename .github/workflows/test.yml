@@ -2,6 +2,9 @@ name: Test dstate
 
 on: [push]
 
+env:
+  mongodb_dsn: mongodb://admin:admin@localhost:27017
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,4 +37,4 @@ jobs:
       - name: pytest full driver set
         continue-on-error: true
         run: |
-          poetry run pytest full_tests/ -v
+          ./shell/pytest-full.sh
