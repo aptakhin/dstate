@@ -15,20 +15,23 @@ class TrafficLightMachine(StateMachine):
         return f'Running {event_data.event} from {event_data.source.id} to {event_data.target.id}'
 
 
-def test_xxx():
+def test_persistance__base():
     world = World()
 
     with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+        assert light_machine.current_state.id == 'green'
         light_machine.cycle()
-        print(light_machine, light_machine.model)
-        light_machine.cycle()
-        print(light_machine, light_machine.model)
-        light_machine.cycle()
-        print(light_machine, light_machine.model)
+
+
+def test_persistance__two_writes():
+    world = World()
 
     with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
-        print(light_machine, light_machine.model)
+        assert light_machine.current_state.id == 'green'
         light_machine.cycle()
-        print(light_machine, light_machine.model)
+        assert light_machine.current_state.id == 'yellow'
 
-    assert False
+    with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+        assert light_machine.current_state.id == 'yellow'
+        light_machine.cycle()
+        assert light_machine.current_state.id == 'red'

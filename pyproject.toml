@@ -31,6 +31,8 @@ flake8-rst-docstrings = ">=0.2,<0.4"
 pep8-naming = "^0.13"
 darglint = "^1.2"
 flake8-pyproject = "^1.2.2"
+mypy = "^1.0.1"
+pytest-watcher = "^0.2.6"
 
 [tool.flake8]
 ignore = ['E231', 'E241']
@@ -43,7 +45,7 @@ per-file-ignores = [
     'test_*.py:D100,D102,D103,S101,B011',
 ]
 exclude = [
-    'experiments/*',
+    'dev-playground/*',
 ]
 max-line-length = 79
 count = true

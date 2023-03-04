@@ -108,7 +108,8 @@ class InMemoryLock(Lock):
 
 
 class LockCreator(object):
-    def create(self, machine_cls, ref) -> Lock:
+    @abstractmethod
+    def get_or_create(self, machine_cls, ref) -> Lock:
         pass
 
 
