@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-poetry run ptw --now .
+poetry run ptw --now . smoke_tests/

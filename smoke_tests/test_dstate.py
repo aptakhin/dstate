@@ -3,7 +3,7 @@ import pytest
 import dstate
 from statemachine import State, StateMachine
 
-from tests.conftest import LockType
+from smoke_tests.conftest import LockType
 
 
 class TrafficLightMachine(StateMachine):
@@ -27,6 +27,8 @@ def test_persistance__base(my_world: dstate.World):
     with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
+        lock_name=LockType.lock,
+        persister_name='default',
     ) as light_machine:
         assert light_machine.current_state.id == 'green'
         light_machine.cycle()
@@ -36,6 +38,8 @@ def test_persistance__two_writes(my_world: dstate.World):
     with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
+        lock_name=LockType.lock,
+        persister_name='default',
     ) as light_machine:
         assert light_machine.current_state.id == 'green'
         light_machine.cycle()
@@ -44,6 +48,8 @@ def test_persistance__two_writes(my_world: dstate.World):
     with my_world.lock_and_write_machine(
         TrafficLightMachine,
         {'id': 1},
+        lock_name=LockType.lock,
+        persister_name='default',
     ) as light_machine:
         assert light_machine.current_state.id == 'yellow'
         light_machine.cycle()
@@ -55,6 +61,7 @@ def test_persistance__read_exception_on_write(my_world: dstate.World):
         TrafficLightMachine,
         {'id': 1},
         lock_name=LockType.none,
+        persister_name='default',
     ) as light_machine:
         assert light_machine.current_state.id == 'green'
         with pytest.raises(dstate.NotAllowedStateMachineChange):

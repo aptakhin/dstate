@@ -13,6 +13,10 @@ python = "^3.9"
 pytest = "^7.2.1"
 black = "^23.1.0"
 pre-commit = "^3.1.1"
+pytest-watcher = "^0.2.6"
+ruff = "^0.0.254"
+pydantic = {extras = ["dotenv"], version = "^1.10.5"}
+mypy = "^1.0.1"
 
 flake8-commas = "^2.0"
 flake8-quotes = "^3.0"
@@ -29,12 +33,13 @@ flake8-rst-docstrings = ">=0.2,<0.4"
 pep8-naming = "^0.13"
 darglint = "^1.2"
 flake8-pyproject = "^1.2.2"
-mypy = "^1.0.1"
-pytest-watcher = "^0.2.6"
-ruff = "^0.0.254"
 
 [tool.poetry.group.python-statemachine.dependencies]
 python-statemachine = "^1.0.3"
+
+
+[tool.poetry.group.driver.dependencies]
+pymongo = "^4.3.3"
 
 [tool.flake8]
 ignore = ['E231', 'E241']
@@ -47,14 +52,16 @@ per-file-ignores = [
     # D103 Missing docstring in public function
     # D104 Missing docstring in public package
     # D105 Missing docstring in magic method
+    # D106 Missing docstring in public nested class
     # D107 Missing docstring in __init__
     # I001 isort found an import in the wrong position
     # I003 isort expected 1 blank line in imports, found 0
     # I004 isort found an unexpected blank line in imports
+    # I005 isort found an unexpected missing import
 
     # Permanent choice
     # W503 line break before binary operator
-    '*.py:D100,D101,D102,D103,D104,D105,D107,I001,I003,I004,W503',
+    '*.py:D100,D101,D102,D103,D104,D105,D106,D107,I001,I003,I004,I005,W503',
 
     # Tests group
 
@@ -62,12 +69,18 @@ per-file-ignores = [
     # D101 Missing docstring in public class
     # D102 Missing docstring in public method
     # D103 Missing docstring in public function
+    # D104 Missing docstring in public package
+    # D105 Missing docstring in magic method
+    # D106 Missing docstring in public nested class
+    # D107 Missing docstring in __init__
     # S101 Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
     # B011 Do not call assert False since python -O removes these calls. Instead callers should raise AssertionError().
     # I001 isort found an import in the wrong position
     # I003 isort expected 1 blank line in imports, found 0
     # I004 isort found an unexpected blank line in imports
-    'tests/*:D100,D101,D102,D103,S101,B011,I001,I003,I004',
+    # I005 isort found an unexpected missing import
+    'smoke_tests/*:D100,D101,D102,D103,D104,D105,D106,D107,S101,B011,I001,I003,I004,I005',
+    'full_tests/*:D100,D101,D102,D103,D104,D105,D106,D107,S101,B011,I001,I003,I004,I005',
 ]
 exclude = [
     'dev-playground/*',

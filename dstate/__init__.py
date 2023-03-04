@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 import logging
-import threading
 from typing import Any, ContextManager, Optional, TypeVar
 
 
@@ -93,33 +92,10 @@ class StatePersister(ABC):
         pass
 
 
-class InMemoryPersister(StatePersister):
-    def __init__(self, obj: dict[str, Any], key: str) -> None:
-        self._obj = obj
-        self.key = key
-
-    def load(self, default_state: str) -> StateMachineData:
-        return StateMachineData(
-            state=self._obj.get(self.key, {}).get('state', default_state),
-        )
-
-    def save(self, patch: dict[str, Any]) -> None:
-        self._obj.setdefault(self.key, {})
-        self._obj[self.key].update(patch)
-
-
 class PersisterCreator(object):
     @abstractmethod
     def get_or_create(self, machine_cls, ref) -> StatePersister:
         pass
-
-
-class InMemoryPersisterCreators(PersisterCreator):
-    def __init__(self) -> None:
-        self._obj: dict[str, Any] = {}
-
-    def get_or_create(self, ref: Reference) -> InMemoryPersister:
-        return InMemoryPersister(self._obj, key=ref.ref['id'])
 
 
 class WorldPersisterCreators(object):
@@ -128,6 +104,12 @@ class WorldPersisterCreators(object):
 
     def register(self, name: str, persister_creator: PersisterCreator) -> None:
         self._creators[name] = persister_creator
+
+    def unregister(self, name: str) -> None:
+        del self._creators[name]
+
+    def is_registered(self, name: str) -> bool:
+        return name in self._creators
 
     def get_creator(self, name: str) -> PersisterCreator:
         return self._creators[name]
@@ -155,61 +137,10 @@ class Lock(ABC):
         pass
 
 
-class NoLock(Lock):
-    def lock(
-        self,
-        lock_time: timedelta,
-        timeout: timedelta,
-    ) -> None:
-        pass
-
-    def unlock(self) -> None:
-        pass
-
-    def allow_change(self, _: dict[str, Any]) -> bool:
-        return False
-
-
-class InMemoryLock(Lock):
-    def __init__(self):
-        self._lock = threading.Lock()
-
-    def lock(
-        self,
-        lock_time: timedelta,
-        timeout: timedelta,
-    ):
-        self._lock.acquire(blocking=True, timeout=timeout.total_seconds())
-
-    def unlock(self):
-        self._lock.release()
-
-    def allow_change(self, _: dict[str, Any]) -> bool:
-        return True
-
-
 class LockCreator(object):
     @abstractmethod
     def get_or_create(self, machine_cls, ref) -> Lock:
         pass
-
-
-class InMemoryLockCreator(LockCreator):
-    def __init__(self):
-        self._locks: dict[int, InMemoryLock] = {}
-
-    def get_or_create(self, ref: Reference) -> Lock:
-        store_id = ref.ref['id']
-        self._locks.setdefault(store_id, InMemoryLock())
-        return self._locks[store_id]
-
-
-class NoLockCreator(LockCreator):
-    def __init__(self):
-        self._no_lock = NoLock()
-
-    def get_or_create(self, ref: Reference) -> Lock:
-        return self._no_lock
 
 
 class WorldLockCreators(object):
@@ -256,10 +187,10 @@ class World(object):
         machine_cls: MType,
         referancable: dict[str, Any],
         *,
+        lock_name: str,
+        persister_name: str,
         initial: Optional[str] = None,
-        lock_name: str = 'lock',
         lock_creators: Optional[WorldLockCreators] = None,
-        persister_name: str = 'default',
         persister_creators: Optional[WorldPersisterCreators] = None,
     ) -> ContextManager[MType]:
         ref = Reference(cls=machine_cls, ref=referancable)

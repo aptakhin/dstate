@@ -4,6 +4,11 @@ import pytest
 from logging.config import dictConfig
 
 import dstate
+from dstate.driver.dummy import (
+    InMemoryLockCreator,
+    InMemoryPersisterCreators,
+    NoLockCreator,
+)
 
 
 LOGGING = {
@@ -41,8 +46,8 @@ def my_world() -> Iterator[dstate.World]:
     world = dstate.World()
     world.persister_creators.register(
         'default',
-        dstate.InMemoryPersisterCreators(),
+        InMemoryPersisterCreators(),
     )
-    world.lock_creators.register(LockType.lock, dstate.InMemoryLockCreator())
-    world.lock_creators.register(LockType.none, dstate.NoLockCreator())
+    world.lock_creators.register(LockType.lock, InMemoryLockCreator())
+    world.lock_creators.register(LockType.none, NoLockCreator())
     yield world

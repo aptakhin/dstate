@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-poetry install --with dev --with python-statemachine
+poetry install --with dev --with python-statemachine --with driver

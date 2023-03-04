@@ -18,7 +18,7 @@ repos:
     language: system
   - id: pytest
     name: pytest
-    entry: ./shell/pytest.sh
+    entry: ./shell/pytest-smoke.sh
     types: [python]
     language: system
   - id: flake8
