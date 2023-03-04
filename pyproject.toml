@@ -50,6 +50,10 @@ exclude = [
 max-line-length = 79
 count = true
 
+[tool.black]
+line-length = 79
+target-version = ['py37']
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

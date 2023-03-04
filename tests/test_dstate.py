@@ -18,7 +18,9 @@ class TrafficLightMachine(StateMachine):
 def test_persistance__base():
     world = World()
 
-    with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+    with world.lock_and_write_machine(
+        TrafficLightMachine, {'id': 1}
+    ) as light_machine:
         assert light_machine.current_state.id == 'green'
         light_machine.cycle()
 
@@ -26,12 +28,16 @@ def test_persistance__base():
 def test_persistance__two_writes():
     world = World()
 
-    with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+    with world.lock_and_write_machine(
+        TrafficLightMachine, {'id': 1}
+    ) as light_machine:
         assert light_machine.current_state.id == 'green'
         light_machine.cycle()
         assert light_machine.current_state.id == 'yellow'
 
-    with world.lock_and_write_machine(TrafficLightMachine, {'id': 1}) as light_machine:
+    with world.lock_and_write_machine(
+        TrafficLightMachine, {'id': 1}
+    ) as light_machine:
         assert light_machine.current_state.id == 'yellow'
         light_machine.cycle()
         assert light_machine.current_state.id == 'red'

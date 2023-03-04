@@ -3,8 +3,12 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import partial
+import logging
 import threading
 from typing import Any, ContextManager, Optional, TypeVar
+
+
+logger = logging.getLogger(__name__)
 
 
 class StateMachineData(object):
@@ -21,7 +25,7 @@ class DState(object):
         return StateMachineData(state=self.state)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        print('State machine change', name, value)
+        logger.debug('State machine change %s %s', name, value)
         object.__setattr__(self, name, value)
 
         if hasattr(self, 'save_here') and self.save_here is not None:
@@ -193,11 +197,13 @@ class World(object):
         self._persister_creators: WorldPersisterCreators = (
             persister_creators or WorldPersisterCreators()
         )
-        self._persister_creators.register('default', InMemoryPersisterCreators())
+        self._persister_creators.register(
+            'default', InMemoryPersisterCreators()
+        )
 
-        self._in_memory_obj = {}
-
-        self._lock_creators: WorldLockCreators = lock_creators or WorldLockCreators()
+        self._lock_creators: WorldLockCreators = (
+            lock_creators or WorldLockCreators()
+        )
         self._lock_creators.register('lock', InMemoryLockCreator())
         self._lock_creators.register('none', NoLockCreator())
 
@@ -231,7 +237,7 @@ class World(object):
 
         def notify(dstate, persister):
             state_data = dstate.make_state_data()
-            print('Want save', state_data.__dict__)
+            logger.debug('Want save %s', repr(state_data.__dict__))
             persister.save(state_data)
 
         state = DState(
@@ -242,7 +248,6 @@ class World(object):
         try:
             yield machine
         finally:
-            print('MF', self._in_memory_obj)
             lock.unlock()
 
     def _get_persister(
