@@ -2,9 +2,11 @@ name: Full test
 
 on: [push]
 
+env:
+  mongodb_dsn: mongodb://admin:admin@localhost:27017
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
