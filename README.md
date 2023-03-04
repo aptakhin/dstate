@@ -2,12 +2,14 @@
 
 [![Test dstate](https://github.com/aptakhin/dstate/actions/workflows/test.yml/badge.svg)](https://github.com/aptakhin/dstate/actions/workflows/test.yml)
 
+dstate library mission to add more clarity and maintainability to distributed applications, which can go  finite state machine approach. It adds persistence and locks on the powerfull [python-statemachine](https://github.com/fgmacedo/python-statemachine). With future releases timers support will be added.
+
 ## Install
 
 ```bash
 ./shell/install-local.py
 # or
-poetry install --with dev
+poetry install --with dev --with python-statemachine --with driver
 ```
 
 ## Usage
@@ -21,7 +23,7 @@ Pretty unstable. No examples yet.
 ```bash
 ./shell/ruff.sh
 ./shell/black.sh
-./shell/pytest.sh
+./shell/pytest-smoke.sh
 ./shell/flake8.sh
 ./shell/mypy.sh
 ```
@@ -32,8 +34,17 @@ Also the same set is supported with `pre-commit`:
 pre-commit install
 ```
 
-Pytest files with watcher:
+Fast smoke pytests with watcher:
 
 ```bash
 ./shell/ptw.sh
+```
+
+
+Full environment tests require `docker compose`:
+
+```bash
+./full_tests/shell/beg-mongo.sh
+./shell/pytest-full.sh
+./full_tests/shell/end-mongo.sh
 ```
