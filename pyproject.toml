@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "dstate"
-version = "0.0.1"
-description = ""
+version = "0.1.0"
+description = "dstate is the library for distributed finite state machines"
 authors = ["Alex Ptakhin <me@aptakhin.name>"]
 license = "MIT"
 readme = "README.md"
