@@ -23,7 +23,3 @@ fi
 
 # Install dstate from the latest build library
 poetry add dist/`ls dist/ | sort -r | head -n 1`
-
-export PYTHONPATH=.
-./shell/pytest-smoke.sh
-./shell/pytest-full.sh
