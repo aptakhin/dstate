@@ -23,6 +23,10 @@ Pretty unstable. No examples yet.
 pip install dstate
 ```
 
+## Roadmap
+
+Roadmap in the [Github issue #3](https://github.com/aptakhin/dstate/issues/3)
+
 ## Dev
 
 ```bash
@@ -44,7 +48,6 @@ Fast smoke pytests with watcher:
 ```bash
 ./shell/ptw.sh
 ```
-
 
 Full environment tests require `docker compose`:
 

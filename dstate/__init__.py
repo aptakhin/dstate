@@ -40,13 +40,15 @@ class NotAllowedStateMachineChange(CannotUpdateStateMachineChange):
 
 
 class StateMachineData(object):
-    def __init__(self, state: str) -> None:
+    def __init__(self, state: str, attrs: Optional[dict[str, Any]] = None) -> None:
         self.state = state
+        self.attrs: Optional[dict[str, Any]] = attrs
 
 
 class State(object):
     def __init__(self, state, change_applier):
         self.state = state
+        self.data = {}
         self.change_applier = change_applier
         self._state_machine_inited = False
 
@@ -64,7 +66,7 @@ class State(object):
         logger.debug('State machine want change %s %s', name, value)
 
         if self.change_applier is not None:
-            self.change_applier({name: value})
+            self.change_applier(self.make_state_data())
 
         object.__setattr__(self, name, value)
 
@@ -73,7 +75,7 @@ class State(object):
 
 class StatePersister(ABC):
     @abstractmethod
-    def load(self, default_state: str) -> StateMachineData:
+    def load(self, default_state: Optional[str]) -> StateMachineData:
         pass
 
     @abstractmethod
@@ -102,10 +104,6 @@ class WorldPersisterCreators(object):
 
     def get_creator(self, name: str) -> PersisterCreator:
         return self._creators[name]
-
-    def get_or_create_persister(self, name, ref: Reference) -> StatePersister:
-        creator = self.get_creator(name)
-        return creator.get_or_create(ref)
 
 
 class Lock(ABC):
@@ -139,26 +137,70 @@ class WorldLockCreators(object):
     def register(self, name: str, lock_creator: LockCreator) -> None:
         self._creators[name] = lock_creator
 
+    def is_registered(self, name: str) -> bool:
+        return name in self._creators
+
     def get_creator(self, name: str) -> LockCreator:
         return self._creators[name]
 
-    def get_or_create_lock(self, lock_name, ref: Reference) -> Lock:
-        creator = self.get_creator(lock_name)
-        return creator.get_or_create(ref)
 
-
-class World(object):
+class Context(object):
     def __init__(
         self,
-        persister_creators: Optional[WorldPersisterCreators] = None,
+        name: str,
+        lock_creator: Optional[LockCreator] = None,
+        lock_name: Optional[str] = None,
+        lock_timeout: Optional[timedelta] = None,
+        lock_time: Optional[timedelta] = None,
         lock_creators: Optional[WorldLockCreators] = None,
+        persister_creator: Optional[LockCreator] = None,
+        persister_name: Optional[str] = None,
+        persister_creators: Optional[WorldPersisterCreators] = None,
+        parent: Optional['Context'] = None,
     ) -> None:
-        self._persister_creators: WorldPersisterCreators = (
-            persister_creators or WorldPersisterCreators()
-        )
+        self._name = name
+        if lock_creator is not None and lock_name is not None:
+            raise ValueError('Only one of lock_creator or lock_name can be set. Got {lock_creator} and {lock_name}'.format(lock_creator=lock_creator, lock_name=lock_name))
+        self._lock_creator = lock_creator
+        self._lock_name = lock_name
+        self._lock_timeout = lock_timeout
+        self._lock_time = lock_time
         self._lock_creators: WorldLockCreators = (
             lock_creators or WorldLockCreators()
         )
+        if persister_creator is not None and persister_name is not None:
+            raise ValueError('Only one of persister_creator or persister_name can be set. Got {persister_creator} and {persister_name}'.format(persister_creator=persister_creator, persister_name=persister_name))
+        self._persister_creator = persister_creator
+        self._persister_name = persister_name
+        self._persister_creators: WorldPersisterCreators = (
+            persister_creators or WorldPersisterCreators()
+        )
+
+        self._parent = parent
+        self._children: dict[str, Context] = {}
+
+    def make_child_context(
+        self,
+        name: str,
+        lock_name: Optional[str] = None,
+        lock_timeout: Optional[timedelta] = None,
+        lock_time: Optional[timedelta] = None,
+        lock_creators: Optional[WorldLockCreators] = None,
+        persister_name: Optional[str] = None,
+        persister_creators: Optional[WorldPersisterCreators] = None,
+    ):
+        context = Context(
+            name=name,
+            lock_name=lock_name,
+            lock_timeout=lock_timeout,
+            lock_time=lock_time,
+            lock_creators=lock_creators,
+            persister_name=persister_name,
+            persister_creators=persister_creators,
+            parent=self,
+        )
+        self._children[name] = context
+        return context
 
     @property
     def persister_creators(self) -> WorldPersisterCreators:
@@ -169,30 +211,37 @@ class World(object):
         return self._lock_creators
 
     @contextmanager
-    def lock_and_write_machine(
+    def acquire_machine(
         self,
         machine_cls: MType,
-        referancable: dict[str, Any],
+        ref: dict[str, Any],
         *,
-        lock_name: str,
-        persister_name: str,
+        lock_name: Optional[str] = None,
+        lock_timeout: Optional[timedelta] = None,
+        lock_time: Optional[timedelta] = None,
+        persister_name: Optional[str] = None,
         initial: Optional[str] = None,
-        lock_creators: Optional[WorldLockCreators] = None,
-        persister_creators: Optional[WorldPersisterCreators] = None,
     ) -> ContextManager[MType]:
-        ref = Reference(cls=machine_cls, ref=referancable)
+        ref = Reference(cls=machine_cls, ref=ref)
 
         lock = self._get_lock(
             ref=ref,
             lock_name=lock_name,
-            lock_creators=lock_creators or self._lock_creators,
         )
-        lock.lock(timeout=timedelta(seconds=3), lock_time=timedelta(seconds=3))
+
+        lock_timeout = self._get_lock_timeout(lock_timeout)
+        if lock_timeout is None:
+            raise ValueError('lock_timeout is not set for {ref}'.format(ref=ref))
+
+        lock_time = self._get_lock_time(lock_time)
+        if lock_time is None:
+            raise ValueError('lock_time is not set for {ref}'.format(ref=ref))
+
+        lock.lock(timeout=lock_timeout, lock_time=lock_time)
 
         persister = self._get_persister(
             ref=ref,
             persister_name=persister_name,
-            persister_creators=persister_creators or self._persister_creators,
         )
         state_data = persister.load(initial)
 
@@ -212,22 +261,67 @@ class World(object):
         self,
         *,
         ref: Reference,
-        persister_name: str,
-        persister_creators: WorldPersisterCreators,
+        persister_name: Optional[str] = None,
     ) -> StatePersister:
-        persister_creators = persister_creators
-        persister_creator = persister_creators.get_creator(persister_name)
+        persister_creator = self._find_persister_by_name_till_parents(persister_name)
+        if persister_creator is None:
+            raise ValueError('No persister is set for {ref=}!'.format(ref))
+
         return persister_creator.get_or_create(ref)
+
+    def _find_persister_by_name_till_parents(
+        self,
+        persister_name: Optional[str],
+    ) -> Optional[StatePersister]:
+        find_persister_name = persister_name or self._persister_name
+        if find_persister_name and self._persister_creators.is_registered(find_persister_name):
+            return self._persister_creators.get_creator(find_persister_name)
+
+        if self._parent:
+            return self._parent._find_persister_by_name_till_parents(persister_name)
+
+        return None
 
     def _get_lock(
         self,
         *,
         ref: Reference,
-        lock_name: str,
-        lock_creators: WorldLockCreators,
-    ) -> StatePersister:
-        lock_creators = lock_creators or self._lock_creators
-        return lock_creators.get_or_create_lock(lock_name, ref)
+        lock_name: Optional[str],
+    ) -> Lock:
+        lock_creator = self._find_lock_by_name_till_parents(lock_name)
+        if lock_creator is None:
+            raise ValueError('No lock is set for {ref}!'.format(ref=ref))
+
+        return lock_creator.get_or_create(ref)
+
+    def _find_lock_by_name_till_parents(
+        self,
+        lock_name: Optional[str],
+    ) -> Optional[Lock]:
+        find_lock_name = lock_name or self._lock_name
+        if self._lock_creators.is_registered(find_lock_name):
+            return self._lock_creators.get_creator(find_lock_name)
+
+        if self._parent:
+            return self._parent._find_lock_by_name_till_parents(lock_name)
+
+        return None
+
+    def _get_lock_timeout(self, lock_timeout: Optional[timedelta] = None) -> Optional[timedelta]:
+        check = [
+            lambda: lock_timeout,
+            lambda: self._lock_timeout,
+            lambda: self._parent._get_lock_timeout() if self._parent else None,
+        ]
+        return next((item() for item in check if item() is not None), None)
+
+    def _get_lock_time(self, lock_time: Optional[timedelta] = None) -> Optional[timedelta]:
+        check = [
+            lambda: lock_time,
+            lambda: self._lock_time,
+            lambda: self._parent._get_lock_time() if self._parent else None,
+        ]
+        return next((item() for item in check if item() is not None), None)
 
     def _create_machine(
         self,
@@ -238,15 +332,15 @@ class World(object):
         persister: StatePersister,
     ) -> MType:
         def change_applier(
-            patch: dict[str, Any],
+            new_state: StateMachineData,
             ref: Reference,
             lock: Lock,
             persister: StatePersister,
         ):
-            if not lock.allow_change(patch):
-                raise NotAllowedStateMachineChange(patch, ref)
+            if not lock.allow_change(new_state):
+                raise NotAllowedStateMachineChange(new_state, ref)
 
-            persister.save(patch)
+            persister.save(new_state)
 
         state = State(
             state=state_data.state,

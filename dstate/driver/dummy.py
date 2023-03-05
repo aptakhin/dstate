@@ -1,6 +1,6 @@
 from datetime import timedelta
 import threading
-from typing import Any
+from typing import Any, Optional
 from dstate import (
     Lock,
     LockCreator,
@@ -15,18 +15,25 @@ class InMemoryPersister(StatePersister):
     def __init__(self, obj: dict[str, Any], key: str) -> None:
         self._obj = obj
         self.key = key
+        self.state_field = 'state'
+        self.attrs_field = 'attrs'
 
-    def load(self, default_state: str) -> StateMachineData:
+    def load(self, default_state: Optional[str]) -> StateMachineData:
+        key_obj = self._obj.get(self.key, {})
         return StateMachineData(
-            state=self._obj.get(self.key, {}).get('state', default_state),
+            state=key_obj.get(self.state_field, default_state),
+            attrs=key_obj.get(self.attrs_field),
         )
 
-    def save(self, patch: dict[str, Any]) -> None:
+    def save(self, data: StateMachineData) -> None:
         self._obj.setdefault(self.key, {})
-        self._obj[self.key].update(patch)
+        self._obj[self.key].update({
+            self.state_field: data.state,
+            self.attrs_field: data.attrs,
+        })
 
 
-class InMemoryPersisterCreators(PersisterCreator):
+class InMemoryPersisterCreator(PersisterCreator):
     def __init__(self) -> None:
         self._obj: dict[str, Any] = {}
 

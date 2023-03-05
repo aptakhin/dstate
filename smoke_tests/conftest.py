@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Iterator
 import pytest
 
@@ -6,7 +7,7 @@ from logging.config import dictConfig
 import dstate
 from dstate.driver.dummy import (
     InMemoryLockCreator,
-    InMemoryPersisterCreators,
+    InMemoryPersisterCreator,
     NoLockCreator,
 )
 
@@ -42,12 +43,18 @@ class LockType:
 
 
 @pytest.fixture
-def my_world() -> Iterator[dstate.World]:
-    world = dstate.World()
-    world.persister_creators.register(
-        'default',
-        InMemoryPersisterCreators(),
+def root_context() -> Iterator[dstate.Context]:
+    context = dstate.Context(
+        name='root',
+        lock_time=timedelta(seconds=3),
+        lock_timeout=timedelta(seconds=3),
+        persister_name='default',
+        lock_name=LockType.lock,
     )
-    world.lock_creators.register(LockType.lock, InMemoryLockCreator())
-    world.lock_creators.register(LockType.none, NoLockCreator())
-    yield world
+    context.persister_creators.register(
+        'default',
+        InMemoryPersisterCreator(),
+    )
+    context.lock_creators.register(LockType.lock, InMemoryLockCreator())
+    context.lock_creators.register(LockType.none, NoLockCreator())
+    yield context
