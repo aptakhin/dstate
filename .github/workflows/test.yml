@@ -27,8 +27,6 @@ jobs:
       - name: Build and install package from sources
         run: |
           poetry build
-          ./shell/danger-test-package-prepare.sh
-          cd ../dstate-test-package
           ./shell/danger-test-package-install.sh
       - name: Lint with flake8
         run: |
