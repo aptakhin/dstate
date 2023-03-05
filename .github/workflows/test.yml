@@ -23,12 +23,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry==1.4
           ./shell/install-local.sh
-      - name: pytest
+
+      - name: Build and install package from sources
         run: |
-          ./shell/pytest-smoke.sh
+          poetry build
+          ./shell/danger-test-package-install.sh
       - name: Lint with flake8
         run: |
           ./shell/flake8.sh
+
+      - name: Remove src package for sure
+        run: |
+          rm -rf dstate/
+
+      - name: pytest
+        run: |
+          PYTHONPATH=. ./shell/pytest-smoke.sh
 
       - name: Start mongo
         continue-on-error: true
@@ -37,4 +47,4 @@ jobs:
       - name: pytest full driver set
         continue-on-error: true
         run: |
-          ./shell/pytest-full.sh
+          PYTHONPATH=. ./shell/pytest-full.sh

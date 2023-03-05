@@ -19,6 +19,10 @@ Pretty unstable. No examples yet.
 
 [Tests file](./smoke_tests/test_dstate.py)
 
+```bash
+pip install dstate
+```
+
 ## Dev
 
 ```bash
@@ -48,4 +52,15 @@ Full environment tests require `docker compose`:
 ./full_tests/shell/beg-mongo.sh
 ./shell/pytest-full.sh
 ./full_tests/shell/end-mongo.sh
+```
+
+Be careful with the testing package on the local machine:
+
+```bash
+poetry build
+./shell/danger-test-package-prepare.sh
+cd ../dstate-test-package
+rm -rf dstate/
+./shell/danger-test-package-install.sh
+PYTHONPATH=. ./shell/pytest-smoke.sh
 ```
