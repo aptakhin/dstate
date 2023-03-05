@@ -19,6 +19,10 @@ Pretty unstable. No examples yet.
 
 [Tests file](./smoke_tests/test_dstate.py)
 
+```bash
+pip install dstate
+```
+
 ## Dev
 
 ```bash
