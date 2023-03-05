@@ -4,7 +4,6 @@ on: [push]
 
 env:
   mongodb_dsn: mongodb://admin:admin@localhost:27017
-  PYTHONPATH: .
 
 jobs:
   build:
@@ -24,9 +23,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry==1.4
           ./shell/install-local.sh
+
       - name: Build and install package from sources
         run: |
-          ./shell/danger-test-package.sh
+          poetry build
+          ./shell/danger-test-package-prepare.sh
+          cd ../dstate-test-package
+          ./shell/danger-test-package-install.sh
       - name: Lint with flake8
         run: |
           ./shell/flake8.sh
@@ -37,7 +40,7 @@ jobs:
 
       - name: pytest
         run: |
-          ./shell/pytest-smoke.sh
+          PYTHONPATH=. ./shell/pytest-smoke.sh
 
       - name: Start mongo
         continue-on-error: true
@@ -46,16 +49,4 @@ jobs:
       - name: pytest full driver set
         continue-on-error: true
         run: |
-          ./shell/pytest-full.sh
-
-
-      - name: Start mongo
-        continue-on-error: true
-        run: |
-          poetry build
-          rm -rf dstate/
-          poetry add
-      - name: pytest full driver set
-        continue-on-error: true
-        run: |
-          ./shell/pytest-full.sh
+          PYTHONPATH=. ./shell/pytest-full.sh

@@ -2,17 +2,6 @@
 
 set -ex
 
-poetry build
-
-# Cleanup previous call
-rm -rf ../dstate-test-package
-
-# Copy current ./ to the new package
-cp -rf ./ ../dstate-test-package
-
-# Cwd
-cd ../dstate-test-package
-
 # Rewrite names to install dstate
 if [ "$(uname)" == "Darwin" ]; then
     sed -i '' 's/name = "dstate"/name = "dstate-test-package"/' pyproject.toml
